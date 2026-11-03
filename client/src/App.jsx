@@ -103,7 +103,7 @@ export default function App() {
   }
   async function askAI(e) {
     e.preventDefault(); if(!aiQuestion.trim())return; setAiBusy(true);setAiError('');setAiAnswer('');
-    try { const res=await fetch('http://localhost:8787/api/tutor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:aiQuestion,progress:{goal:data.goal,completed,total:allTopics.length,topics:allTopics,studyLogs:data.studyLogs.slice(0,10)}})}); const body=await res.json(); if(!res.ok)throw Error(body.error||'AI request failed');setAiAnswer(body.answer); }
+    try { const res=await fetch('https://placementos-tzzn.onrender.com',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:aiQuestion,progress:{goal:data.goal,completed,total:allTopics.length,topics:allTopics,studyLogs:data.studyLogs.slice(0,10)}})}); const body=await res.json(); if(!res.ok)throw Error(body.error||'AI request failed');setAiAnswer(body.answer); }
     catch(err){setAiError(err.message+' — Check that the backend is running and server/.env has a valid API key.');}
     finally{setAiBusy(false);}
   }
