@@ -45,6 +45,7 @@ export default function App() {
   const [questionForm,setQuestionForm] = useState({title:'',area:'Java + DSA',difficulty:'Easy',prompt:'',answer:'',explanation:''});
   const [showAnswers,setShowAnswers] = useState({});
   const [taskForm,setTaskForm] = useState({date:todayString(),time:'',title:'',area:'Java + DSA',minutes:45});
+  const [editingTaskId, setEditingTaskId] = useState(null);
   const [logForm,setLogForm] = useState({date:todayString(),hours:'1',topic:'',reflection:''});
   const [filter,setFilter] = useState('All');
   const [aiQuestion,setAiQuestion] = useState('');
@@ -82,12 +83,64 @@ export default function App() {
     setQuestionForm({title:'',area:'Java + DSA',difficulty:'Easy',prompt:'',answer:'',explanation:''});
   }
   function toggleQuestion(id) { setData(d=>({...d,questions:d.questions.map(q=>q.id===id?{...q,done:!q.done}:q)})); }
-  function addTask(e) {
-    e.preventDefault(); if(!taskForm.title.trim()) return;
-    setData(d=>({...d,plannerTasks:[...d.plannerTasks,{...taskForm,id:uid(),done:false,minutes:Number(taskForm.minutes)}]}));
-    setTaskForm(t=>({...t,title:'',time:''}));
+ function addTask(e) {
+  e.preventDefault();
+  if (!taskForm.title.trim()) return;
+
+  if (editingTaskId) {
+    setData(d => ({
+      ...d,
+      plannerTasks: d.plannerTasks.map(t =>
+        t.id === editingTaskId
+          ? { ...t, ...taskForm, minutes: Number(taskForm.minutes) }
+          : t
+      )
+    }));
+    setEditingTaskId(null);
+  } else {
+    setData(d => ({
+      ...d,
+      plannerTasks: [
+        ...d.plannerTasks,
+        { ...taskForm, id: uid(), done: false, minutes: Number(taskForm.minutes) }
+      ]
+    }));
   }
+
+  setTaskForm(t => ({ ...t, title: '', time: '' }));
+}
   function toggleTask(id) { setData(d=>({...d,plannerTasks:d.plannerTasks.map(t=>t.id===id?{...t,done:!t.done}:t)})); }
+  function editTask(task) {
+  setTaskForm({
+    date: task.date,
+    time: task.time || '',
+    title: task.title,
+    area: task.area,
+    minutes: task.minutes
+  });
+
+  setEditingTaskId(task.id);
+}
+
+function deleteTask(id) {
+  if (!window.confirm('Are you sure you want to delete this task?')) return;
+
+  setData(d => ({
+    ...d,
+    plannerTasks: d.plannerTasks.filter(t => t.id !== id)
+  }));
+
+  if (editingTaskId === id) {
+    setEditingTaskId(null);
+    setTaskForm({
+      date: todayString(),
+      time: '',
+      title: '',
+      area: 'Java + DSA',
+      minutes: 45
+    });
+  }
+}
   function addStudyLog(e) {
     e.preventDefault(); if(!logForm.topic.trim()) return;
     setData(d=>({...d,studyLogs:[{...logForm,id:uid(),hours:Number(logForm.hours)},...d.studyLogs]}));
@@ -109,6 +162,7 @@ export default function App() {
   }
   const nav = [['dashboard','▦','Dashboard'],['learning','✓','Learning plan'],['questions','⌘','Question bank'],['planner','◷','Study planner'],['notes','▤','Learning notes'],['tutor','✳','AI tutor']];
   const areaOptions=['Java + DSA','SQL + DBMS','Aptitude','CS Fundamentals','Projects','Mock Interviews','Other'];
+  
 
   return <div className="shell">
     <aside className="sidebar"><div className="brand"><div className="brand-mark">P</div><div><b>PlacementOS</b><small>YOUR CAREER COMMAND CENTER</small></div></div>
@@ -131,7 +185,71 @@ export default function App() {
 
       {tab==='questions' && <><form className="add-form" onSubmit={addQuestion}><h3>Add a coding or interview question</h3><div className="form-grid"><input required value={questionForm.title} onChange={e=>setQuestionForm({...questionForm,title:e.target.value})} placeholder="Question title"/><select value={questionForm.area} onChange={e=>setQuestionForm({...questionForm,area:e.target.value})}>{areaOptions.map(a=><option key={a}>{a}</option>)}</select><select value={questionForm.difficulty} onChange={e=>setQuestionForm({...questionForm,difficulty:e.target.value})}><option>Easy</option><option>Medium</option><option>Hard</option></select></div><textarea required value={questionForm.prompt} onChange={e=>setQuestionForm({...questionForm,prompt:e.target.value})} placeholder="Question / problem statement" rows="3"/><textarea value={questionForm.answer} onChange={e=>setQuestionForm({...questionForm,answer:e.target.value})} placeholder="Answer or solution (optional)" rows="3"/><textarea value={questionForm.explanation} onChange={e=>setQuestionForm({...questionForm,explanation:e.target.value})} placeholder="Explanation / key concept (optional)" rows="2"/><button className="btn primary">+ Save question</button></form><div className="section-head"><div><h2>Your question bank</h2><p>{data.questions.filter(q=>q.done).length} of {data.questions.length} practiced</p></div></div><div className="question-list">{data.questions.map(q=><article className="question-card" key={q.id}><div className="question-top"><span className="pill small-pill">{q.area}</span><span className="difficulty">{q.difficulty}</span><label className="practiced"><input type="checkbox" checked={q.done} onChange={()=>toggleQuestion(q.id)}/> Practiced</label></div><h3>{q.title}</h3><p className="question-prompt">{q.prompt}</p><button className="text-btn" onClick={()=>setShowAnswers(s=>({...s,[q.id]:!s[q.id]}))}>{showAnswers[q.id]?'Hide answer & explanation':'Reveal answer & explanation ↓'}</button>{showAnswers[q.id]&&<div className="answer-box"><b>Answer / solution</b><p>{q.answer||'No answer added yet.'}</p><b>Explanation</b><p>{q.explanation||'No explanation added yet.'}</p></div>}</article>)}</div></>}
 
-      {tab==='planner' && <><section className="stats"><div className="stat"><span>TODAY'S STUDY TIME</span><strong>{(todayMinutes/60).toFixed(1)} <small>hrs</small></strong><small>Target: {data.dailyHours} hours</small><div className="progress"><i style={{width:Math.min(todayMinutes/(data.dailyHours*60)*100,100)+'%'}}/></div></div><div className="stat"><span>ALL-TIME STUDY</span><strong>{totalHours.toFixed(1)} <small>hrs</small></strong><small>Based on your study logs</small></div><div className="stat"><span>TODAY'S TASKS</span><strong>{todayTasks.filter(t=>t.done).length}/{todayTasks.length}</strong><small>Mark tasks complete as you go</small></div></section><form className="add-form" onSubmit={addTask}><h3>Plan a study task</h3><div className="form-grid"><input type="date" required value={taskForm.date} onChange={e=>setTaskForm({...taskForm,date:e.target.value})}/><input type="time" value={taskForm.time} onChange={e=>setTaskForm({...taskForm,time:e.target.value})}/><select value={taskForm.area} onChange={e=>setTaskForm({...taskForm,area:e.target.value})}>{areaOptions.map(a=><option key={a}>{a}</option>)}</select><input required value={taskForm.title} onChange={e=>setTaskForm({...taskForm,title:e.target.value})} placeholder="Task e.g. Solve 3 array problems"/><input type="number" min="5" step="5" value={taskForm.minutes} onChange={e=>setTaskForm({...taskForm,minutes:e.target.value})} aria-label="Estimated minutes"/><button className="btn primary">+ Add to planner</button></div></form><div className="section-head"><div><h2>Scheduled tasks</h2><p>All planned study sessions</p></div></div><div className="topic-list">{[...data.plannerTasks].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).map(t=><label className={'topic '+(t.done?'done':'')} key={t.id}><input type="checkbox" checked={t.done} onChange={()=>toggleTask(t.id)}/><span className="checkmark">{t.done?'✓':''}</span><div><small>{t.date} {t.time||'Time not set'} · {t.area} · {t.minutes} min</small><b>{t.title}</b></div><span className="topic-state">{t.done?'Done':'Planned'}</span></label>)}{data.plannerTasks.length===0&&<div className="empty">No planned tasks yet. Add your first task above.</div>}</div><form className="add-form log-form" onSubmit={addStudyLog}><h3>Log actual study time</h3><div className="form-grid"><input type="date" value={logForm.date} onChange={e=>setLogForm({...logForm,date:e.target.value})}/><select value={logForm.hours} onChange={e=>setLogForm({...logForm,hours:e.target.value})}><option value="0.25">15 minutes</option><option value="0.5">30 minutes</option><option value="0.75">45 minutes</option><option value="1">1 hour</option><option value="1.5">1.5 hours</option><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option></select><input required value={logForm.topic} onChange={e=>setLogForm({...logForm,topic:e.target.value})} placeholder="What did you study?"/></div><textarea value={logForm.reflection} onChange={e=>setLogForm({...logForm,reflection:e.target.value})} placeholder="Optional: what went well or needs revision?" rows="2"/><button className="btn primary">Save study log</button></form><div className="notes-list">{data.studyLogs.map(l=><article className="note-card" key={l.id}><small>{l.date} · {l.hours} hours</small><p><b>{l.topic}</b></p>{l.reflection&&<p>{l.reflection}</p>}</article>)}</div></>}
+      {tab==='planner' && <><section className="stats"><div className="stat"><span>TODAY'S STUDY TIME</span><strong>{(todayMinutes/60).toFixed(1)} <small>hrs</small></strong><small>Target: {data.dailyHours} hours</small><div className="progress"><i style={{width:Math.min(todayMinutes/(data.dailyHours*60)*100,100)+'%'}}/></div></div><div className="stat"><span>ALL-TIME STUDY</span><strong>{totalHours.toFixed(1)} <small>hrs</small></strong><small>Based on your study logs</small></div><div className="stat"><span>TODAY'S TASKS</span><strong>{todayTasks.filter(t=>t.done).length}/{todayTasks.length}</strong><small>Mark tasks complete as you go</small></div></section><form className="add-form" onSubmit={addTask}><h3>{editingTaskId ? 'Edit study task' : 'Plan a study task'}</h3><div className="form-grid"><input type="date" required value={taskForm.date} onChange={e=>setTaskForm({...taskForm,date:e.target.value})}/><input type="time" value={taskForm.time} onChange={e=>setTaskForm({...taskForm,time:e.target.value})}/><select value={taskForm.area} onChange={e=>setTaskForm({...taskForm,area:e.target.value})}>{areaOptions.map(a=><option key={a}>{a}</option>)}</select><input required value={taskForm.title} onChange={e=>setTaskForm({...taskForm,title:e.target.value})} placeholder="Task e.g. Solve 3 array problems"/><input type="number" min="5" step="5" value={taskForm.minutes} onChange={e=>setTaskForm({...taskForm,minutes:e.target.value})} aria-label="Estimated minutes"/><button className="btn primary">
+  {editingTaskId ? 'Save Changes' : '+ Add to planner'}
+</button>
+
+{editingTaskId && (
+  <button
+    type="button"
+    className="btn ghost"
+    onClick={() => {
+      setEditingTaskId(null);
+      setTaskForm({
+        date: todayString(),
+        time: '',
+        title: '',
+        area: 'Java + DSA',
+        minutes: 45
+      });
+    }}
+  >
+    Cancel
+  </button>
+)}</div></form><div className="section-head"><div><h2>Scheduled tasks</h2><p>All planned study sessions</p></div></div><div className="topic-list">{[...data.plannerTasks].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).map(t=><div
+  className={'topic ' + (t.done ? 'done' : '')}
+  key={t.id}
+>
+  <input
+    type="checkbox"
+    checked={t.done}
+    onChange={() => toggleTask(t.id)}
+  />
+
+  <span className="checkmark">
+    {t.done ? '✓' : ''}
+  </span>
+
+  <div>
+    <small>
+      {t.date} {t.time || 'Time not set'} ·
+      {t.area} · {t.minutes} min
+    </small>
+    <b>{t.title}</b>
+  </div>
+
+  <span className="topic-state">
+    {t.done ? 'Done' : 'Planned'}
+  </span>
+
+  <div className="task-actions">
+    <button
+      type="button"
+      className="btn ghost"
+      onClick={() => editTask(t)}
+    >
+      ✏️ Edit
+    </button>
+
+    <button
+      type="button"
+      className="btn ghost delete-btn"
+      onClick={() => deleteTask(t.id)}
+    >
+      🗑 Delete
+    </button>
+  </div>
+</div>)}{data.plannerTasks.length===0&&<div className="empty">No planned tasks yet. Add your first task above.</div>}</div><form className="add-form log-form" onSubmit={addStudyLog}><h3>Log actual study time</h3><div className="form-grid"><input type="date" value={logForm.date} onChange={e=>setLogForm({...logForm,date:e.target.value})}/><select value={logForm.hours} onChange={e=>setLogForm({...logForm,hours:e.target.value})}><option value="0.25">15 minutes</option><option value="0.5">30 minutes</option><option value="0.75">45 minutes</option><option value="1">1 hour</option><option value="1.5">1.5 hours</option><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option></select><input required value={logForm.topic} onChange={e=>setLogForm({...logForm,topic:e.target.value})} placeholder="What did you study?"/></div><textarea value={logForm.reflection} onChange={e=>setLogForm({...logForm,reflection:e.target.value})} placeholder="Optional: what went well or needs revision?" rows="2"/><button className="btn primary">Save study log</button></form><div className="notes-list">{data.studyLogs.map(l=><article className="note-card" key={l.id}><small>{l.date} · {l.hours} hours</small><p><b>{l.topic}</b></p>{l.reflection&&<p>{l.reflection}</p>}</article>)}</div></>}
 
       {tab==='notes' && <><form className="note-form notes-page" onSubmit={addNote}><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="What did you learn? What was difficult? What will you revise next?" rows="4"/><button className="btn primary">Save learning log</button></form><div className="notes-list">{data.notes.length===0?<div className="empty">No learning logs yet. Add your first note above.</div>:data.notes.map(n=><article className="note-card" key={n.id}><small>{n.date}</small><p>{n.text}</p><button className="text-btn" onClick={()=>setData(d=>({...d,notes:d.notes.filter(x=>x.id!==n.id)}))}>Delete</button></article>)}</div></>}
 
